@@ -1,6 +1,9 @@
 import { Request, Response } from 'express';
-import axios from 'axios';
+import OpenAI from 'openai';
+import 'dotenv/config';
 import Message, { IMessage } from '../models/Message';
+
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export const sendMessage = async (
   req: Request,
@@ -16,19 +19,20 @@ export const sendMessage = async (
   }
 
   try {
-    const response = await axios.post(
-      'https://api.openai.com/v1/completions',
-      {
-        model: 'text-davinci-003',
-        prompt: message,
-        max_tokens: 100,
-      },
-      {
-        headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
-      }
-    );
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: 'You are a helpful assistant.' },
+        {
+          role: 'user',
+          content: message,
+        },
+      ],
+      store: true,
+    });
+    console.log(completion.choices[0].message);
 
-    const generatedResponse = response.data.choices[0].text.trim();
+    const generatedResponse = completion.choices[0].message.content;
 
     const userHistory = await Message.findOneAndUpdate(
       { ip, userAgent },
